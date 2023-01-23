@@ -34,11 +34,7 @@ class DownloadInfo:
 
     @classmethod
     def from_song_data(cls, data: SongData) -> DownloadInfo:
-        return cls(
-            data.data.song_id,
-            data.local_files.usdb_path,
-            CodePage.from_language(data.data.language),
-        )
+        return cls(data.data.song_id, data.local_files.usdb_path, CodePage.from_language(data.data.language))
 
 
 @attrs.define(kw_only=True)
@@ -51,9 +47,7 @@ class Locations:
     file_path_stem: str
 
     @classmethod
-    def new(
-        cls, song_id: SongId, song_dir: str, meta_path: str | None, headers: Headers
-    ) -> Locations:
+    def new(cls, song_id: SongId, song_dir: str, meta_path: str | None, headers: Headers) -> Locations:
         filename_stem = sanitize_filename(headers.artist_title_str())
         if meta_path:
             dir_path = os.path.dirname(meta_path)
@@ -86,13 +80,10 @@ class Context:
     logger: Log
 
     @classmethod
-    def new(
-        cls, details: SongDetails, options: Options, info: DownloadInfo, logger: Log
-    ) -> Context:
+    def new(cls, details: SongDetails, options: Options, info: DownloadInfo, logger: Log) -> Context:
         txt_str = usdb_scraper.get_notes(details.song_id, info.encoding, logger)
         txt = SongTxt.parse(txt_str, logger)
         txt.sanitize()
-        txt.headers.creator = txt.headers.creator or details.uploader or None
         paths = Locations.new(
             details.song_id, options.song_dir, info.meta_path, txt.headers
         )
@@ -159,16 +150,11 @@ class SongLoader(QRunnable):
         _maybe_write_txt(ctx)
         _write_sync_meta(ctx)
         self.logger.info("All done!")
-        self.on_finish(
-            self.song_id,
-            LocalFiles.from_sync_meta(ctx.locations.meta_path, ctx.sync_meta),
-        )
+        self.on_finish(self.song_id, LocalFiles.from_sync_meta(ctx.locations.meta_path, ctx.sync_meta))
 
 
 def download_songs(
-    infos: list[DownloadInfo],
-    on_start: Callable[[SongId], None],
-    on_finish: Callable[[SongId, LocalFiles], None],
+    infos: list[DownloadInfo], on_start: Callable[[SongId], None], on_finish: Callable[[SongId, LocalFiles], None]
 ) -> None:
     options = download_options()
     threadpool = QThreadPool.globalInstance()
@@ -184,11 +170,7 @@ def _maybe_download_audio(ctx: Context) -> None:
         if idx > 9:
             break
         if ext := resource_dl.download_video(
-            resource,
-            options,
-            ctx.options.browser,
-            ctx.locations.file_path_stem,
-            ctx.logger,
+            resource, options, ctx.options.browser, ctx.locations.file_path_stem, ctx.logger
         ):
             path = f"{ctx.locations.file_path_stem}.{ext}"
             ctx.sync_meta.set_audio_meta(path)
@@ -196,9 +178,7 @@ def _maybe_download_audio(ctx: Context) -> None:
             ctx.logger.info("Success! Downloaded audio.")
             return
 
-    ctx.logger.error(
-        f"Failed to download audio (song duration > {ctx.txt.minimum_song_length()})!"
-    )
+    ctx.logger.error(f"Failed to download audio (song duration > {ctx.txt.minimum_song_length()})!")
 
 
 def _maybe_download_video(ctx: Context) -> None:
@@ -208,11 +188,7 @@ def _maybe_download_video(ctx: Context) -> None:
         if idx > 9:
             break
         if ext := resource_dl.download_video(
-            resource,
-            options,
-            ctx.options.browser,
-            ctx.locations.file_path_stem,
-            ctx.logger,
+            resource, options, ctx.options.browser, ctx.locations.file_path_stem, ctx.logger
         ):
             path = f"{ctx.locations.file_path_stem}.{ext}"
             ctx.sync_meta.set_video_meta(path)
@@ -255,9 +231,7 @@ def _maybe_download_background(ctx: Context) -> None:
         max_width=None,
     ):
         ctx.txt.headers.background = filename
-        ctx.sync_meta.set_background_meta(
-            os.path.join(ctx.locations.dir_path, filename)
-        )
+        ctx.sync_meta.set_background_meta(os.path.join(ctx.locations.dir_path, filename))
         ctx.logger.info("Success! Downloaded background.")
     else:
         ctx.logger.error("Failed to download background!")
